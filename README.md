@@ -30,7 +30,7 @@ You have to specify the delay and to propagate the action_buffer througought the
 ```python
 import gymnasium as gym
 
-from delayed_env_wrapper.gymnasium_wrapper import ConstantDelayedWrapper
+from delayed_env_wrapper.gymnax_wrapper import ConstantDelayedWrapper
 
 base_env, env_params = gymnax.make("CartPole-v1")
 delayed_env = ConstantDelayedWrapper(base_env, delay=5)
