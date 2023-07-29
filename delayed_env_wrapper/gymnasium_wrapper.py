@@ -40,7 +40,8 @@ class ConstantDelayedWrapper(gym.Wrapper):
             self._action_buffer.append(action)
             return self.env.step(actual_action)
         self._action_buffer.append(action)
-        return self.reset(), 0, False, False, {}
+        obs, info = self.reset()
+        return obs, 0, False, False, info
 
     def reset(self, *args, **kwargs):
         self._action_buffer = deque([], maxlen=self._delay)
