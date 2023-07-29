@@ -38,7 +38,7 @@ def test_env_is_delayed(setup_and_fill_buffer):
     actions = [1, 1, 0, 0, 1]
     for i, action in enumerate(actions):
         assert delayed_env.action_to_exec == initial_actions[i]
-        delayed_env.step(action)
+        obs, reward, terminated, truncated, info = delayed_env.step(action)
     assert np.array_equal(delayed_env.action_buffer, actions)
 
 
@@ -55,3 +55,4 @@ def test_invalid_delays():
     delay = -1
     with pytest.raises(DelayError):
         ConstantDelayedWrapper(base_env, delay=delay)
+

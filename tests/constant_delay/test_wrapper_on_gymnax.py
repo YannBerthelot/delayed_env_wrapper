@@ -66,3 +66,4 @@ def test_invalid_delays():
     delay = -1
     with pytest.raises(DelayError):
         ConstantDelayedWrapper(base_env, delay=delay)
+
