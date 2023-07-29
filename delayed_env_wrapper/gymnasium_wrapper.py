@@ -2,15 +2,16 @@ from collections import deque
 from typing import Any, SupportsFloat, TypeVar
 
 import gymnasium as gym
-
+from delayed_env_wrapper.errors import DelayError
 ObsType = TypeVar("ObsType")
 ActType = TypeVar("ActType")
 WrapperObsType = TypeVar("WrapperObsType")
 WrapperActType = TypeVar("WrapperActType")
 
-
 class ConstantDelayedWrapper(gym.Wrapper):
     def __init__(self, base_env, delay):
+        if delay <=0:
+            raise DelayError(delay)
         gym.Wrapper.__init__(self, base_env)
         self._delay = delay
         self._action_buffer = None

@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 
 from delayed_env_wrapper.gymnasium_wrapper import ConstantDelayedWrapper
-
+from delayed_env_wrapper.errors import DelayError
 
 @pytest.fixture()
 def setup_and_fill_buffer():
@@ -46,3 +46,12 @@ def test_reset_clears_buffer(setup_and_fill_buffer):
     delayed_env, initial_actions = setup_and_fill_buffer
     delayed_env.reset()
     assert len(delayed_env.action_buffer) == 0
+
+def test_invalid_delays():
+    base_env = gym.make("CartPole-v1")
+    delay = 0
+    with pytest.raises(DelayError):
+        ConstantDelayedWrapper(base_env, delay=delay)
+    delay = -1
+    with pytest.raises(DelayError):
+        ConstantDelayedWrapper(base_env, delay=delay)

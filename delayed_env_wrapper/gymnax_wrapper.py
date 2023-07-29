@@ -8,11 +8,12 @@ import jax.numpy as jnp
 from flax import struct
 from gymnax.environments import environment
 from gymnax.wrappers.purerl import GymnaxWrapper
-
+from delayed_env_wrapper.errors import DelayError
 ObsType = TypeVar("ObsType")
 ActType = TypeVar("ActType")
 WrapperObsType = TypeVar("WrapperObsType")
 WrapperActType = TypeVar("WrapperActType")
+
 
 
 @struct.dataclass
@@ -22,6 +23,8 @@ class EnvStateWithBuffer:
 
 class ConstantDelayedWrapper(GymnaxWrapper):
     def __init__(self, base_env, delay):
+        if delay <= 0:
+            raise DelayError(delay)
         GymnaxWrapper.__init__(self, base_env)
         self._delay = delay
 

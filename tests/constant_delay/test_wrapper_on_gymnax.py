@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from delayed_env_wrapper.gymnax_wrapper import ConstantDelayedWrapper
-
+from delayed_env_wrapper.errors import DelayError
 
 @pytest.fixture()
 def setup_and_fill_buffer():
@@ -57,3 +57,12 @@ def test_env_is_delayed(setup_and_fill_buffer):
         )
         action_buffer = env_state.action_buffer
     assert jnp.array_equal(action_buffer, jnp.array(actions))
+
+def test_invalid_delays():
+    base_env, env_params = gymnax.make("CartPole-v1")
+    delay = 0
+    with pytest.raises(DelayError):
+        ConstantDelayedWrapper(base_env, delay=delay)
+    delay = -1
+    with pytest.raises(DelayError):
+        ConstantDelayedWrapper(base_env, delay=delay)
