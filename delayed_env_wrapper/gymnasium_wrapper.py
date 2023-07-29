@@ -1,7 +1,7 @@
+from collections import deque
 from typing import Any, SupportsFloat, TypeVar
 
 import gymnasium as gym
-from collections import deque
 
 ObsType = TypeVar("ObsType")
 ActType = TypeVar("ActType")

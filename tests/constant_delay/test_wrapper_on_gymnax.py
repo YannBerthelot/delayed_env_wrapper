@@ -1,8 +1,9 @@
-import jax
 import gymnax
-import numpy as np
+import jax
 import jax.numpy as jnp
+import numpy as np
 import pytest
+
 from delayed_env_wrapper.gymnax_wrapper import ConstantDelayedWrapper
 
 
@@ -34,10 +35,8 @@ def test_env_is_wrapper_of_base_env():
 
 
 def test_fill_buffer_before_start(setup_and_fill_buffer):
-    delayed_env, initial_actions, _, _, _, action_buffer= setup_and_fill_buffer
-    assert jnp.array_equal(
-        action_buffer, jnp.array(initial_actions)
-    )
+    delayed_env, initial_actions, _, _, _, action_buffer = setup_and_fill_buffer
+    assert jnp.array_equal(action_buffer, jnp.array(initial_actions))
 
 
 def test_env_is_delayed(setup_and_fill_buffer):
