@@ -15,6 +15,11 @@ WrapperObsType = TypeVar("WrapperObsType")
 WrapperActType = TypeVar("WrapperActType")
 
 
+@struct.dataclass
+class EnvStateWithBuffer:
+    state: environment.EnvState
+    action_buffer: jnp.ndarray
+
 class ConstantDelayedWrapper(GymnaxWrapper):
     def __init__(self, base_env, delay):
         GymnaxWrapper.__init__(self, base_env)
@@ -24,11 +29,12 @@ class ConstantDelayedWrapper(GymnaxWrapper):
     def step(
         self,
         key: chex.PRNGKey,
-        state: environment.EnvState,
+        state_with_buffer: EnvStateWithBuffer,
         action: Union[int, float],
-        action_buffer: jnp.ndarray,
         params: Optional[environment.EnvParams] = None,
     ):
+        action_buffer = state_with_buffer.action_buffer
+        state = state_with_buffer.state
         buffer_size = jnp.sum(~jnp.isnan(action_buffer))
 
         def past_init(action_buffer, action):
@@ -38,12 +44,14 @@ class ConstantDelayedWrapper(GymnaxWrapper):
             n_obs, n_state, reward, done, info = self._env.step(
                 key, state, actual_action, params
             )
-            return n_obs, n_state, reward, done, info, action_buffer
+            new_state_with_buffer = EnvStateWithBuffer(action_buffer=action_buffer, state=n_state)
+            return n_obs, new_state_with_buffer, reward, done, info
 
         def pre_init(action_buffer, action):
             action_buffer = action_buffer.at[buffer_size].set(action)
             n_obs, _, reward, done, info = self._env.step(key, state, action, params)
-            return jnp.ones_like(n_obs), state, reward, done, info, action_buffer
+            new_state_with_buffer = EnvStateWithBuffer(action_buffer=action_buffer, state=state)
+            return jnp.ones_like(n_obs), new_state_with_buffer, reward, done, info
 
         return jax.lax.cond(
             (jnp.equal(buffer_size, self._delay)),
@@ -57,7 +65,8 @@ class ConstantDelayedWrapper(GymnaxWrapper):
     def reset(self, key: chex.PRNGKey, params: Optional[environment.EnvParams] = None):
         action_buffer = jnp.ones(self._delay) * jnp.nan
         obs, state = self._env.reset(key, params)
-        return obs, state, action_buffer
+        state_with_buffer = EnvStateWithBuffer(action_buffer=action_buffer, state=state)
+        return obs, state_with_buffer
 
 
 @jax.jit
