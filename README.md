@@ -15,7 +15,7 @@ pip install git+https://github.com/YannBerthelot/delayed_env_wrapper.git
 You just have to specify the delay. The actions that are given to the environment at time t will automatically only be effective at time t+delay. 
 A delay of 0 is equivalent to the base environment.
 ```python
-import gymnax
+import gymnasium as gym
 
 from delayed_env_wrapper.gymnasium_wrapper import ConstantDelayedWrapper
 
@@ -28,7 +28,7 @@ obs, reward, terminated, truncated, info = delayed_env.step(action)
 ### Gymnax
 You just have to specify the delay.
 ```python
-import gymnasium as gym
+import gymnax
 
 from delayed_env_wrapper.gymnax_wrapper import ConstantDelayedWrapper
 
