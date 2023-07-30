@@ -2,18 +2,22 @@ from collections import deque
 from typing import Any, SupportsFloat, TypeVar
 
 import gymnasium as gym
+
 from delayed_env_wrapper.errors import DelayError
+
 ObsType = TypeVar("ObsType")
 ActType = TypeVar("ActType")
 WrapperObsType = TypeVar("WrapperObsType")
 WrapperActType = TypeVar("WrapperActType")
 
+
 class ConstantDelayedWrapper(gym.Wrapper):
-    def __init__(self, base_env, delay):
-        if delay <=0:
+    def __init__(self, base_env: gym.Env, delay: int, reward: float = 0):
+        if delay <= 0:
             raise DelayError(delay)
         gym.Wrapper.__init__(self, base_env)
         self._delay = delay
+        self._reward = reward
         self._action_buffer = None
 
     @property
@@ -40,9 +44,10 @@ class ConstantDelayedWrapper(gym.Wrapper):
             self._action_buffer.append(action)
             return self.env.step(actual_action)
         self._action_buffer.append(action)
-        obs, info = self.reset()
-        return obs, 0, False, False, info
+        obs, info = self.reset(reset_buffer=False)
+        return obs, self._reward, False, False, info
 
-    def reset(self, *args, **kwargs):
-        self._action_buffer = deque([], maxlen=self._delay)
+    def reset(self, reset_buffer=True, *args, **kwargs):
+        if reset_buffer:
+            self._action_buffer = deque([], maxlen=self._delay)
         return self.env.reset(*args, **kwargs)

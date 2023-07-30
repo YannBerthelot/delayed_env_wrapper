@@ -8,12 +8,13 @@ import jax.numpy as jnp
 from flax import struct
 from gymnax.environments import environment
 from gymnax.wrappers.purerl import GymnaxWrapper
+
 from delayed_env_wrapper.errors import DelayError
+
 ObsType = TypeVar("ObsType")
 ActType = TypeVar("ActType")
 WrapperObsType = TypeVar("WrapperObsType")
 WrapperActType = TypeVar("WrapperActType")
-
 
 
 @struct.dataclass
@@ -21,8 +22,9 @@ class EnvStateWithBuffer:
     state: environment.EnvState
     action_buffer: jnp.ndarray
 
+
 class ConstantDelayedWrapper(GymnaxWrapper):
-    def __init__(self, base_env, delay):
+    def __init__(self, base_env: environment.Environment, delay: int):
         if delay <= 0:
             raise DelayError(delay)
         GymnaxWrapper.__init__(self, base_env)
@@ -47,13 +49,17 @@ class ConstantDelayedWrapper(GymnaxWrapper):
             n_obs, n_state, reward, done, info = self._env.step(
                 key, state, actual_action, params
             )
-            new_state_with_buffer = EnvStateWithBuffer(action_buffer=action_buffer, state=n_state)
+            new_state_with_buffer = EnvStateWithBuffer(
+                action_buffer=action_buffer, state=n_state
+            )
             return n_obs, new_state_with_buffer, reward, done, info
 
         def pre_init(action_buffer, action):
             action_buffer = action_buffer.at[buffer_size].set(action)
             n_obs, _, reward, done, info = self._env.step(key, state, action, params)
-            new_state_with_buffer = EnvStateWithBuffer(action_buffer=action_buffer, state=state)
+            new_state_with_buffer = EnvStateWithBuffer(
+                action_buffer=action_buffer, state=state
+            )
             return jnp.ones_like(n_obs), new_state_with_buffer, reward, done, info
 
         return jax.lax.cond(
