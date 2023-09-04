@@ -10,6 +10,8 @@ from delayed_env_wrapper.gymnax_wrapper import (
     FrameStackingWrapper,
 )
 
+from gymnax.environments.classic_control.cartpole import EnvState
+
 
 @pytest.fixture()
 def setup_and_fill_delay_buffer():
@@ -54,11 +56,20 @@ def test_env_is_delayed(setup_and_fill_delay_buffer):
     ) = setup_and_fill_delay_buffer
     action_buffer = env_state.action_buffer
     actions = [1, 1, 0, 0, 1]
+    key = jax.random.PRNGKey(42)
+    key_reset, key_step = jax.random.split(key)
+    base_env, base_env_params = gymnax.make("CartPole-v1")
+    _, base_env_state = base_env.reset(key_reset, base_env_params)
+
     for i, action in enumerate(actions):
         assert action_buffer[0] == initial_actions[i]
         _, env_state, _, _, _ = delayed_env.step(
             key_step, env_state, action, env_params
         )
+        _, base_env_state, _, _, _ = base_env.step(
+            key_step, base_env_state, initial_actions[i], base_env_params
+        )
+        assert base_env_state == env_state.state
         action_buffer = env_state.action_buffer
     assert jnp.array_equal(action_buffer, jnp.array(actions))
 
@@ -185,3 +196,142 @@ def test_env_is_stacked(setup_stack_buffer):
             key_step, env_state, action, env_params
         )
         assert jnp.array_equal(obs, expected_intermediate_observations[i])
+
+
+MAX_DELAY = 3
+
+
+def reset_delayed_env_and_params(delay):
+    base_env, env_params = gymnax.make("CartPole-v1")
+    delayed_env = ConstantDelayedWrapper(base_env, delay=delay, max_delay=MAX_DELAY)
+    key_reset = jax.random.PRNGKey(42)
+    _, env_state = delayed_env.reset(key_reset, env_params)
+
+
+def get_expected_actions(t):
+    expected_actions = [
+        jnp.array(
+            [
+                jnp.array([1.0, jnp.nan, jnp.nan]),
+                jnp.array([jnp.nan, 1.0, jnp.nan]),
+                jnp.array([jnp.nan, jnp.nan, 1.0]),
+            ]
+        ),
+        jnp.array(
+            [
+                jnp.array([0.0, jnp.nan, jnp.nan]),
+                jnp.array([1.0, 0.0, jnp.nan]),
+                jnp.array([jnp.nan, 1.0, 0.0]),
+            ]
+        ),
+        jnp.array(
+            [
+                jnp.array([1.0, jnp.nan, jnp.nan]),
+                jnp.array([0.0, 1.0, jnp.nan]),
+                jnp.array([1.0, 0.0, 1.0]),
+            ]
+        ),
+    ]
+    return expected_actions[t]
+
+
+def get_env_states(actions):
+    key = jax.random.PRNGKey(42)
+    key_reset, key_step = jax.random.split(key)
+    base_env, base_env_params = gymnax.make("CartPole-v1")
+    _, base_env_state = base_env.reset(key_reset, base_env_params)
+    env_states = [base_env_state]
+    for action in actions:
+        _, base_env_state, _, _, _ = base_env.step(
+            key_step, base_env_state, action, base_env_params
+        )
+        env_states.append(base_env_state)
+    return env_states
+
+
+from delayed_env_wrapper.gymnax_wrapper import EnvStateWithBuffer
+
+import numpy as np
+
+
+def merge_expected_states(expected_states):
+    keys = [x for x in expected_states[0].__dataclass_fields__.keys()]
+    state = {}
+    for key in keys:
+        state[key] = (
+            np.concatenate(
+                [ex_state.__dict__[key].reshape(-1, 1) for ex_state in expected_states]
+            )
+            .reshape(1, -1)
+            .flatten()
+        )
+    return EnvState(**state)
+
+
+def get_expected_states(t):
+    actions = [1, 0, 1]
+    env_states = get_env_states(actions)
+
+    expected_states = [
+        [env_states[0], env_states[0], env_states[0]],
+        [env_states[1], env_states[0], env_states[0]],
+        [env_states[2], env_states[1], env_states[0]],
+        [env_states[3], env_states[2], env_states[1]],
+    ]
+
+    return expected_states[t]
+
+
+def reset_and_step_delayed_env(delay):
+    base_env, env_params = gymnax.make("CartPole-v1")
+    delayed_env = ConstantDelayedWrapper(base_env, delay=delay, max_delay=MAX_DELAY)
+    key = jax.random.PRNGKey(42)
+    key_reset, key_step = jax.random.split(key)
+    _, env_state = delayed_env.reset(key_reset, env_params)
+    # pre-init
+    states = []
+    buffers = []
+
+    # def step(infos):
+    #     key_step, env_state, action, env_params = infos
+    #     _, env_state, _, _, _ = delayed_env.step(
+    #         key_step, env_state, action, env_params
+    #     )
+    #     return key_step, env_state, action, env_params
+
+    # key_step, env_state, action, env_params = jax.vmap(
+    #     step, (key_step, env_state, action, env_params)
+    # )
+    # states.append(env_state)
+    # buffers.append(action_buffer)
+    for action in [1, 0, 1]:
+        _, env_state, _, _, _ = delayed_env.step(
+            key_step, env_state, action, env_params
+        )
+
+        states.append(env_state.state)
+        buffers.append(env_state.action_buffer)
+    return states, buffers
+
+
+def test_reset_vectorized_env_with_multiple_delays():
+    delays = jnp.array([1, 2, 3])
+    jax.vmap(reset_delayed_env_and_params, in_axes=(0))(delays)
+
+
+def check_env_states_are_equal(env_state_1, env_state_2):
+    for key in env_state_1.__dict__.keys():
+        if not jnp.array_equal(env_state_1.__dict__[key], env_state_2.__dict__[key]):
+            return False
+    return True
+
+
+def test_step_vectorized_env_with_multiple_delays():
+    delays = jnp.array([1, 2, 3])
+    states, buffers = jax.vmap(reset_and_step_delayed_env, in_axes=(0))(delays)
+    for i, buffer in enumerate(buffers):
+        assert jnp.array_equal(buffer, get_expected_actions(i), equal_nan=True)
+    for i, state in enumerate(states):
+        assert check_env_states_are_equal(
+            state, merge_expected_states(get_expected_states(i))
+        )
