@@ -374,6 +374,31 @@ def check_env_states_are_equal(env_state_1, env_state_2):
     return True
 
 
+from functools import partial
+
+
+# def get_obs_stacking_wrapper(number_of_frames):
+#     base_env, env_params = gymnax.make("CartPole-v1")
+#     env = FrameStackingWrapper(base_env=base_env, num_of_frames=3)
+#     env.observation_space(env_params).shape
+
+
+# def get_action_stacking_wrapper(number_of_frames):
+#     base_env, env_params = gymnax.make("CartPole-v1")
+#     env = AugmentedObservationWrapper(base_env=base_env, num_of_frames=3)
+#     env.observation_space(env_params).shape
+
+
+# def test_vmap_obs_space_stacked_env():
+#     numbers_of_frames = jnp.array([3 for _ in range(3)])
+#     jax.vmap(get_obs_stacking_wrapper, in_axes=(0))(numbers_of_frames)
+
+
+# def test_vmap_action_space_stacked_env():
+#     numbers_of_frames = jnp.array([3 for _ in range(3)])
+#     jax.vmap(get_action_stacking_wrapper, in_axes=(0))(numbers_of_frames)
+
+
 def test_step_vectorized_env_with_multiple_delays():
     delays = jnp.array([1, 2, 3])
     states, buffers = jax.vmap(reset_and_step_delayed_env, in_axes=(0))(delays)

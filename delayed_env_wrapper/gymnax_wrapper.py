@@ -163,7 +163,7 @@ class FrameStackingWrapper(GymnaxWrapper):
                         jnp.finfo(jnp.float32).max,
                     ]
                 ),
-                jnp.repeat(jnp.array(max_action), self._num_of_frames),
+                jnp.ones(self._num_of_frames) * max_action,
             ]
         )
         low = jnp.concatenate(
@@ -179,7 +179,12 @@ class FrameStackingWrapper(GymnaxWrapper):
                 jnp.repeat(jnp.array(min_action), self._num_of_frames),
             ]
         )
-        return Box(low, high, (4 + self._num_of_frames,), dtype=jnp.float32)
+        return Box(
+            low,
+            high,
+            (self._env.observation_space(params).shape[0] + self._num_of_frames,),
+            dtype=jnp.float32,
+        )
 
     @partial(jax.jit, static_argnums=(0,))
     def step(
@@ -195,7 +200,7 @@ class FrameStackingWrapper(GymnaxWrapper):
         buffer_size = jnp.floor_divide(
             jnp.sum(~jnp.isnan(obs_buffer)),
             self._env.observation_space(params).shape[0],
-        )  # 4 is obs size
+        )
 
         def past_init(obs_buffer, action):
             """Process the action when the buffer is full"""
@@ -249,7 +254,7 @@ class FrameStackingWrapper(GymnaxWrapper):
         return get_repeated_obs(obs, self._num_of_frames), state_with_buffer
 
 
-class AugmentedObservationWrapper(ConstantDelayedWrapper):
+class AugmentedObservationWrapper(GymnaxWrapper):
     """delayed-MDP augmentated observation (last obs + past d actions) wrapper"""
 
     def __init__(self, base_env: ConstantDelayedWrapper, num_of_frames: int):
@@ -288,7 +293,12 @@ class AugmentedObservationWrapper(ConstantDelayedWrapper):
                 jnp.repeat(jnp.array(min_action), self._num_of_frames),
             ]
         )
-        return Box(low, high, (4 + self._delay,), dtype=jnp.float32)
+        return Box(
+            low,
+            high,
+            (self._env.observation_space(params).shape[0] + self._num_of_frames,),
+            dtype=jnp.float32,
+        )
 
     @partial(jax.jit, static_argnums=(0,))
     def step(
