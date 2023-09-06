@@ -37,6 +37,11 @@ def check_invalid_delays(delay, max_delay):
         raise DelayError(delay)
 
 
+def check_invalid_num_of_frames(num_of_frames):
+    if num_of_frames <= 0:
+        raise FrameStackingError(num_of_frames)
+
+
 class ConstantDelayedWrapper(GymnaxWrapper):
     def __init__(
         self,
@@ -143,6 +148,7 @@ class FrameStackingWrapper(GymnaxWrapper):
         if num_of_frames <= 0:
             raise FrameStackingError(num_of_frames)
         GymnaxWrapper.__init__(self, base_env)
+        jax.debug.callback(check_invalid_num_of_frames, num_of_frames)
         self._num_of_frames = num_of_frames
 
     def observation_space(self, params: EnvParams) -> Box:
@@ -252,6 +258,7 @@ class AugmentedObservationWrapper(ConstantDelayedWrapper):
         if num_of_frames <= 0:
             raise FrameStackingError(num_of_frames)
         ConstantDelayedWrapper.__init__(self, base_env, num_of_frames)
+        jax.debug.callback(check_invalid_num_of_frames, num_of_frames)
         self._num_of_frames = num_of_frames
 
     def observation_space(self, params: EnvParams) -> Box:
