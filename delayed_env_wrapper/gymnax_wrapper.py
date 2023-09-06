@@ -145,10 +145,8 @@ def get_repeated_obs(obs, n_times):
 
 class FrameStackingWrapper(GymnaxWrapper):
     def __init__(self, base_env: environment.Environment, num_of_frames: int):
-        if num_of_frames <= 0:
-            raise FrameStackingError(num_of_frames)
-        GymnaxWrapper.__init__(self, base_env)
         jax.debug.callback(check_invalid_num_of_frames, num_of_frames)
+        GymnaxWrapper.__init__(self, base_env)
         self._num_of_frames = num_of_frames
 
     def observation_space(self, params: EnvParams) -> Box:
@@ -255,10 +253,9 @@ class AugmentedObservationWrapper(ConstantDelayedWrapper):
     """delayed-MDP augmentated observation (last obs + past d actions) wrapper"""
 
     def __init__(self, base_env: ConstantDelayedWrapper, num_of_frames: int):
-        if num_of_frames <= 0:
-            raise FrameStackingError(num_of_frames)
-        ConstantDelayedWrapper.__init__(self, base_env, num_of_frames)
         jax.debug.callback(check_invalid_num_of_frames, num_of_frames)
+        ConstantDelayedWrapper.__init__(self, base_env, num_of_frames)
+
         self._num_of_frames = num_of_frames
 
     def observation_space(self, params: EnvParams) -> Box:
