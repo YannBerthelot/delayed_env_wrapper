@@ -352,18 +352,6 @@ def reset_and_step_delayed_env(delay):
     states = []
     buffers = []
 
-    # def step(infos):
-    #     key_step, env_state, action, env_params = infos
-    #     _, env_state, _, _, _ = delayed_env.step(
-    #         key_step, env_state, action, env_params
-    #     )
-    #     return key_step, env_state, action, env_params
-
-    # key_step, env_state, action, env_params = jax.vmap(
-    #     step, (key_step, env_state, action, env_params)
-    # )
-    # states.append(env_state)
-    # buffers.append(action_buffer)
     for action in [1, 0, 1]:
         _, env_state, _, _, _ = delayed_env.step(
             key_step, env_state, action, env_params

@@ -163,7 +163,7 @@ class FrameStackingWrapper(GymnaxWrapper):
                         jnp.finfo(jnp.float32).max,
                     ]
                 ),
-                jnp.array([max_action for _ in range(self._num_of_frames)]),
+                jnp.repeat(jnp.array(max_action), self._num_of_frames),
             ]
         )
         low = jnp.concatenate(
@@ -176,7 +176,7 @@ class FrameStackingWrapper(GymnaxWrapper):
                         jnp.finfo(jnp.float32).max,
                     ]
                 ),
-                jnp.array([min_action for _ in range(self._num_of_frames)]),
+                jnp.repeat(jnp.array(min_action), self._num_of_frames),
             ]
         )
         return Box(low, high, (4 + self._num_of_frames,), dtype=jnp.float32)
@@ -272,7 +272,7 @@ class AugmentedObservationWrapper(ConstantDelayedWrapper):
                         jnp.finfo(jnp.float32).max,
                     ]
                 ),
-                jnp.array([max_action for _ in range(self._delay)]),
+                jnp.repeat(jnp.array(max_action), self._num_of_frames),
             ]
         )
         low = jnp.concatenate(
@@ -285,7 +285,7 @@ class AugmentedObservationWrapper(ConstantDelayedWrapper):
                         jnp.finfo(jnp.float32).max,
                     ]
                 ),
-                jnp.array([min_action for _ in range(self._delay)]),
+                jnp.repeat(jnp.array(min_action), self._num_of_frames),
             ]
         )
         return Box(low, high, (4 + self._delay,), dtype=jnp.float32)
