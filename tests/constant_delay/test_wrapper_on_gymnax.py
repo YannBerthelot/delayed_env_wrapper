@@ -136,8 +136,26 @@ def test_action_stacking():
     for i, (obs, expected_base_obs) in enumerate(
         zip(observations, expected_base_observations)
     ):
+        assert obs.shape[0] == obs_dim + delay
         assert jnp.array_equal(expected_base_obs, obs[:obs_dim])
         assert jnp.array_equal(expected_actions[i], obs[obs_dim:])
+
+
+def test_action_stacking_has_correct_obs_space():
+    base_env, env_params = gymnax.make("CartPole-v1")
+    obs_dim = base_env.observation_space(env_params).shape[0]
+    delay = 5
+    delayed_env = ConstantDelayedWrapper(base_env, delay=delay)
+    action_stacked_env = AugmentedObservationWrapper(delayed_env, num_of_frames=delay)
+    assert action_stacked_env.observation_space(env_params).shape == (obs_dim + delay,)
+
+
+def test_frame_stacking_has_correct_obs_space():
+    base_env, env_params = gymnax.make("CartPole-v1")
+    obs_dim = base_env.observation_space(env_params).shape[0]
+    delay = 5
+    stacked_env = FrameStackingWrapper(base_env, num_of_frames=delay)
+    assert stacked_env.observation_space(env_params).shape == (obs_dim + delay,)
 
 
 @pytest.fixture()

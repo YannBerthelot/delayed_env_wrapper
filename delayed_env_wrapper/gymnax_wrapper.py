@@ -8,7 +8,8 @@ import jax.numpy as jnp
 from flax import struct
 from gymnax.environments import environment
 from gymnax.wrappers.purerl import GymnaxWrapper
-
+from gymnax.environments.spaces import Box
+from gymnax.environments import EnvParams
 from delayed_env_wrapper.errors import DelayError, FrameStackingError
 
 ObsType = TypeVar("ObsType")
@@ -144,6 +145,38 @@ class FrameStackingWrapper(GymnaxWrapper):
         GymnaxWrapper.__init__(self, base_env)
         self._num_of_frames = num_of_frames
 
+    def observation_space(self, params: EnvParams) -> Box:
+        """Observation space of the environment."""
+        max_action = self.action_space(params).n
+        min_action = 0
+        high = jnp.concatenate(
+            [
+                jnp.array(
+                    [
+                        params.x_threshold * 2,
+                        jnp.finfo(jnp.float32).max,
+                        params.theta_threshold_radians * 2,
+                        jnp.finfo(jnp.float32).max,
+                    ]
+                ),
+                jnp.array([max_action for _ in range(self._num_of_frames)]),
+            ]
+        )
+        low = jnp.concatenate(
+            [
+                jnp.array(
+                    [
+                        params.x_threshold * 2,
+                        jnp.finfo(jnp.float32).max,
+                        params.theta_threshold_radians * 2,
+                        jnp.finfo(jnp.float32).max,
+                    ]
+                ),
+                jnp.array([min_action for _ in range(self._num_of_frames)]),
+            ]
+        )
+        return Box(low, high, (4 + self._num_of_frames,), dtype=jnp.float32)
+
     @partial(jax.jit, static_argnums=(0,))
     def step(
         self,
@@ -220,6 +253,38 @@ class AugmentedObservationWrapper(ConstantDelayedWrapper):
             raise FrameStackingError(num_of_frames)
         ConstantDelayedWrapper.__init__(self, base_env, num_of_frames)
         self._num_of_frames = num_of_frames
+
+    def observation_space(self, params: EnvParams) -> Box:
+        """Observation space of the environment."""
+        max_action = self.action_space(params).n
+        min_action = 0
+        high = jnp.concatenate(
+            [
+                jnp.array(
+                    [
+                        params.x_threshold * 2,
+                        jnp.finfo(jnp.float32).max,
+                        params.theta_threshold_radians * 2,
+                        jnp.finfo(jnp.float32).max,
+                    ]
+                ),
+                jnp.array([max_action for _ in range(self._delay)]),
+            ]
+        )
+        low = jnp.concatenate(
+            [
+                jnp.array(
+                    [
+                        params.x_threshold * 2,
+                        jnp.finfo(jnp.float32).max,
+                        params.theta_threshold_radians * 2,
+                        jnp.finfo(jnp.float32).max,
+                    ]
+                ),
+                jnp.array([min_action for _ in range(self._delay)]),
+            ]
+        )
+        return Box(low, high, (4 + self._delay,), dtype=jnp.float32)
 
     @partial(jax.jit, static_argnums=(0,))
     def step(
