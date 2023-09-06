@@ -89,7 +89,9 @@ class ConstantDelayedWrapper(GymnaxWrapper):
                 action_buffer=action_buffer, state=state, delay=delay
             )
             return (
-                jnp.ones_like(n_obs),
+                jnp.ones_like(
+                    n_obs
+                ),  # FIXME : is-it a good idea? should it be the initial obs?
                 new_state_with_buffer,
                 reward,
                 done,
@@ -208,3 +210,60 @@ class FrameStackingWrapper(GymnaxWrapper):
             observations=obs_buffer, state=state, initial_observation=obs
         )
         return get_repeated_obs(obs, self._num_of_frames), state_with_buffer
+
+
+class AugmentedObservationWrapper(ConstantDelayedWrapper):
+    """delayed-MDP augmentated observation (last obs + past d actions) wrapper"""
+
+    def __init__(self, base_env: ConstantDelayedWrapper, num_of_frames: int):
+        if num_of_frames <= 0:
+            raise FrameStackingError(num_of_frames)
+        ConstantDelayedWrapper.__init__(self, base_env, num_of_frames)
+        self._num_of_frames = num_of_frames
+
+    @partial(jax.jit, static_argnums=(0,))
+    def step(
+        self,
+        key: chex.PRNGKey,
+        state_with_buffer: EnvStateWithBuffer,
+        action: Union[int, float],
+        params: Optional[environment.EnvParams] = None,
+    ):
+        action_buffer = state_with_buffer.action_buffer
+        state = state_with_buffer
+        buffer_size = jnp.sum(~jnp.isnan(action_buffer))
+
+        def pre_init(action):
+            n_obs, n_state, reward, done, info = self._env.step(
+                key, state, action, params
+            )
+            action_buffer = n_state.action_buffer
+            stacked_obs = jnp.concatenate(
+                [n_obs, stack_observations(jnp.nan_to_num(action_buffer))]
+            )
+            return stacked_obs, n_state, reward, done, info
+
+        def past_init(action):
+            n_obs, n_state, reward, done, info = self._env.step(
+                key, state, action, params
+            )
+            action_buffer = n_state.action_buffer
+            stacked_obs = jnp.concatenate([n_obs, stack_observations(action_buffer)])
+            return stacked_obs, n_state, reward, done, info
+
+        return jax.lax.cond(
+            (jnp.equal(buffer_size, self._num_of_frames)),
+            past_init,
+            pre_init,
+            action,
+        )
+
+    @partial(jax.jit, static_argnums=(0,))
+    def reset(self, key: chex.PRNGKey, params: Optional[environment.EnvParams] = None):
+        obs, state = self._env.reset(key, params)
+        action_buffer = state.action_buffer
+
+        return (
+            jnp.concatenate([obs, stack_observations(jnp.nan_to_num(action_buffer))]),
+            state,
+        )
